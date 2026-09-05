@@ -33,7 +33,10 @@ export default function Contact({ onShowToast }) {
     setStatusMessage('');
 
     try {
-      const res = await fetch('/api/contact', {
+      const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/$/, '') : '';
+      const endpoint = `${baseUrl}/api/contact`;
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
