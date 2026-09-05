@@ -18,32 +18,28 @@ def send_smtp_email(name, email, message_content, is_test=False):
     Returns (True, None) on success, or (False, diagnostic_error_message) on failure.
     Logs comprehensive server-side diagnostics without exposing secrets.
     """
-    host = current_app.config.get("MAIL_HOST")
-    port = current_app.config.get("MAIL_PORT", 587)
-    username = current_app.config.get("MAIL_USERNAME")
-    password = current_app.config.get("MAIL_PASSWORD")
-    use_tls = current_app.config.get("MAIL_USE_TLS", True)
-    use_ssl = current_app.config.get("MAIL_USE_SSL", False)
+    host = current_app.config.get("MAIL_HOST") or "smtp.gmail.com"
+    port = int(current_app.config.get("MAIL_PORT") or 587)
+    username = (current_app.config.get("MAIL_USERNAME") or "").strip()
+    password = (current_app.config.get("MAIL_PASSWORD") or "").strip()
+    use_ssl = current_app.config.get("MAIL_USE_SSL", False) or port == 465
+    use_tls = current_app.config.get("MAIL_USE_TLS", True) and not use_ssl
     recipient = current_app.config.get("MAIL_TO", "kathiresantoto@gmail.com")
     sender = current_app.config.get("MAIL_FROM") or f"Portfolio Alert <{recipient}>"
 
     # 1. Check Missing Environment Variables
-    if not host:
-        err = "[SMTP ERROR: Missing MAIL_HOST] Host is not configured in backend/.env"
-        print(err)
-        return False, "MAIL_HOST is not configured."
     if not username:
-        err = "[SMTP ERROR: Missing MAIL_USERNAME] Email username is not set in backend/.env"
+        err = "[SMTP ERROR: Missing MAIL_USERNAME] Email username is not set in environment variables."
         print(err)
-        return False, "MAIL_USERNAME is not configured."
+        return False, "MAIL_USERNAME is not configured in Vercel environment variables."
     if not password:
-        err = "[SMTP ERROR: Missing MAIL_PASSWORD] Email password / App Password is empty in backend/.env. Generate a Google App Password at https://myaccount.google.com/apppasswords"
+        err = "[SMTP ERROR: Missing MAIL_PASSWORD] Email password / App Password is not set in environment variables."
         print(err)
-        return False, "MAIL_PASSWORD is not configured."
+        return False, "MAIL_PASSWORD is not configured in Vercel environment variables."
 
     try:
         msg = MIMEMultipart("alternative")
-        subject = "🧪 Test Email: Portfolio Verification" if is_test else "New Portfolio Contact Message"
+        subject = "🧪 Test Email: Portfolio Verification" if is_test else f"Portfolio Message from {name}"
         msg["Subject"] = subject
         msg["From"] = sender
         msg["To"] = recipient
@@ -114,7 +110,7 @@ Message:
         return True, None
 
     except smtplib.SMTPAuthenticationError as e:
-        err = f"[SMTP AUTHENTICATION ERROR] Authentication failed for '{username}'. (Code: {e.smtp_code}). For Gmail, ensure 2-Step Verification is active and you are using a 16-letter App Password from https://myaccount.google.com/apppasswords."
+        err = f"[SMTP AUTHENTICATION ERROR] Authentication failed for '{username}'. (Code: {e.smtp_code})."
         print(err)
         return False, "SMTP authentication failed. Please verify your MAIL_USERNAME and MAIL_PASSWORD (Google App Password)."
 
@@ -126,22 +122,22 @@ Message:
     except smtplib.SMTPRecipientsRefused as e:
         err = f"[SMTP RECIPIENT REJECTED] The mail provider rejected recipient {recipient}. Error: {str(e)}"
         print(err)
-        return False, f"Recipient address rejected by mail server."
+        return False, "Recipient address rejected by mail server."
 
     except smtplib.SMTPSenderRefused as e:
         err = f"[SMTP SENDER REJECTED] The mail provider rejected sender {sender}. Error: {str(e)}"
         print(err)
-        return False, f"Sender address rejected by mail server."
+        return False, "Sender address rejected by mail server."
 
     except smtplib.SMTPException as e:
         err = f"[SMTP PROTOCOL ERROR] SMTP protocol exception: {str(e)}"
         print(err)
-        return False, f"SMTP protocol error occurred."
+        return False, f"SMTP protocol error occurred: {str(e)}"
 
     except Exception as e:
         err = f"[SMTP UNEXPECTED ERROR] {str(e)}"
         print(err)
-        return False, f"Unexpected error while sending email."
+        return False, f"Unexpected error while sending email: {str(e)}"
 
 @contact_bp.route("/contact", methods=["POST"])
 def submit_contact_form():
@@ -191,7 +187,7 @@ def submit_contact_form():
     if not email_success:
         return jsonify({
             "success": False,
-            "message": "Unable to send your message right now."
+            "message": email_error or "Unable to send your message right now."
         }), 500
 
     return jsonify({
