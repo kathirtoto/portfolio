@@ -16,9 +16,14 @@ def create_app(config_class=Config):
     # Initialize Database
     init_db(app)
 
-    # Register Contact Blueprint
+    # Register Contact Blueprint (supports both /api/contact and /contact)
     app.register_blueprint(contact_bp)
+    try:
+        app.register_blueprint(contact_bp, name="contact_direct", url_prefix="")
+    except Exception:
+        pass
 
+    @app.route("/health", methods=["GET"])
     @app.route("/api/health", methods=["GET"])
     def health_check():
         return jsonify({
