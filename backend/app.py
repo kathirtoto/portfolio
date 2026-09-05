@@ -28,6 +28,24 @@ def create_app(config_class=Config):
             "database": "connected"
         }), 200
 
+    # Serve static frontend files if present (fallback for serverless or unified deployments)
+    from pathlib import Path
+    from flask import send_from_directory
+    root_dist = Path(__file__).resolve().parent.parent / "dist"
+    frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+    static_dir = root_dist if root_dist.exists() else (frontend_dist if frontend_dist.exists() else None)
+
+    if static_dir and static_dir.exists():
+        @app.route("/", defaults={"path": ""})
+        @app.route("/<path:path>")
+        def serve_spa(path):
+            if path.startswith("api/"):
+                return jsonify({"error": "Endpoint not found"}), 404
+            file_path = static_dir / path
+            if path != "" and file_path.exists() and file_path.is_file():
+                return send_from_directory(str(static_dir), path)
+            return send_from_directory(str(static_dir), "index.html")
+
     return app
 
 app = create_app()
