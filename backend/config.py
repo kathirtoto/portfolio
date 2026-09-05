@@ -34,7 +34,14 @@ class Config:
     PORT = int(os.getenv("PORT", 5000))
     DEBUG = os.getenv("FLASK_DEBUG", "1") == "1"
 
-    # Standardized Mail Configuration (Supports MAIL_*, EMAIL_*, and MAIL_RECEIVER aliases)
+    # Standardized Mail Configuration (Supports HTTP Email APIs and SMTP)
+    # HTTP Email APIs (Serverless-native, HTTPS Port 443)
+    RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+    RESEND_FROM = os.getenv("RESEND_FROM", "").strip() or "Kathiresan Portfolio <onboarding@resend.dev>"
+    SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "").strip()
+    BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+
+    # SMTP Configuration (Fallback for local development)
     MAIL_HOST = os.getenv("MAIL_HOST") or os.getenv("EMAIL_HOST", "smtp.gmail.com")
     MAIL_PORT = int(os.getenv("MAIL_PORT") or os.getenv("EMAIL_PORT", 587))
     MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", os.getenv("EMAIL_USE_TLS", "True")).lower() in ("true", "1", "t")
